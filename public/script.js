@@ -3,6 +3,15 @@ const input = document.getElementById('todo-input');
 const list = document.getElementById('todo-list');
 const statusEl = document.getElementById('status');
 
+const DEMO_MODE = window.location.hostname.endsWith('github.io');
+let demoStore = JSON.parse(localStorage.getItem('todos') || '[]');
+
+function persist() {
+  if (DEMO_MODE) {
+    localStorage.setItem('todos', JSON.stringify(demoStore));
+  }
+}
+
 function showStatus(message, isError = true) {
   statusEl.textContent = message;
   statusEl.hidden = false;
@@ -74,6 +83,10 @@ function render(todos) {
 async function loadTodos() {
   try {
     clearStatus();
+    if (DEMO_MODE) {
+      render(demoStore);
+      return;
+    }
     const todos = await api('/api/todos');
     render(todos);
   } catch (err) {
@@ -82,6 +95,12 @@ async function loadTodos() {
 }
 
 async function addTodo(title) {
+  if (DEMO_MODE) {
+    demoStore.unshift({ id: Date.now(), title, completed: false });
+    persist();
+    render(demoStore);
+    return;
+  }
   try {
     await api('/api/todos', {
       method: 'POST',
@@ -94,6 +113,15 @@ async function addTodo(title) {
 }
 
 async function toggleTodo(id, completed) {
+  if (DEMO_MODE) {
+    const todo = demoStore.find((t) => t.id === id);
+    if (todo) {
+      todo.completed = completed;
+      persist();
+      render(demoStore);
+    }
+    return;
+  }
   try {
     clearStatus();
     await api(`/api/todos/${id}`, {
@@ -108,6 +136,12 @@ async function toggleTodo(id, completed) {
 }
 
 async function deleteTodo(id) {
+  if (DEMO_MODE) {
+    demoStore = demoStore.filter((t) => t.id !== id);
+    persist();
+    render(demoStore);
+    return;
+  }
   try {
     await api(`/api/todos/${id}`, { method: 'DELETE' });
     await loadTodos();
